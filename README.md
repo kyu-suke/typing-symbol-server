@@ -1,0 +1,2 @@
+# typing-symbol-server
+websockets

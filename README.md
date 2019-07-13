@@ -1,2 +1,1 @@
 # typing-symbol-server
-websockets

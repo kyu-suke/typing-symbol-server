@@ -21,7 +21,25 @@ import qualified Network.WebSockets as WS
 
 type ConnId = Int
 type Client = (ConnId, WS.Connection)
-type RoomPair = (Client, Maybe Client)
+type RoomPair = (Client, Maybe Client, Config)
+
+data Config = Config { targetChar :: String
+                     , playerOneLeftChar :: String
+                     , playerTwoLeftChar :: String
+                     }
+
+charSet =
+    [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "!", "\"", "\\", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", ":", ";", "<", "=", ">", "?", "@", "[", "]", "^", "_", "`", "{", "|", "}", "~", "¥" ]
+
+
+fst' :: (a, b, c) -> a
+fst' (a, _, _) = a
+
+snd' :: (a, b, c) -> b
+snd' (_, b, _) = b
+
+thd' :: (a, b, c) -> c
+thd' (_, _, c) = c
 
 broadcast :: Text -> [Client] -> IO ()
 broadcast msg = mapM_ $ (`WS.sendTextData` msg) . snd
@@ -34,7 +52,7 @@ removeClient :: Int -> [Client] -> ([Client], ())
 removeClient i cs = (filter (\c -> fst c /= i) cs, ())
 
 addRoomPair :: Client -> [RoomPair] -> ([RoomPair], RoomPair)
-addRoomPair c rps = ((c, Nothing):rps, (c, Nothing))
+addRoomPair c rps = ((c, Nothing, Config ""):rps, (c, Nothing))
 
 modRoomPair :: Client -> [RoomPair] -> [RoomPair] -> ([RoomPair], RoomPair)
 modRoomPair c (rx : rxs) rps =
@@ -72,8 +90,8 @@ chat ref pairRef pendingConn = do
                _ -> atomicModifyIORef pairRef (addRoomPair client)
 
     case rp of
-      (cl1, Just cl2) -> broadcast "pairling" [cl1, cl2]
-      (cl1, Nothing) -> broadcast "wait" [cl1]
+      (cl1, Just cl2) -> broadcast "{\"message\": \"pairing\"}" [cl1, cl2]
+      (cl1, Nothing) -> broadcast "{\"message\": \"wait\"}" [cl1]
 
     flip finally (bothDisconnect identifier) $ forever $ do
         msg <- WS.receiveData conn

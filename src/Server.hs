@@ -12,6 +12,7 @@ import Network.HTTP.Types.Status (status204)
 import Network.Wai (Application, responseFile)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import System.Random
+import Data.List
 
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.WebSockets as WS
@@ -31,18 +32,18 @@ data Config = Config { targetChar :: String
                      }
 
 charSet =
-    "0123456789!\\\"\\\\#$%&'()*+,-./:;<=>?@[]^_`{|}~¥"
+    ["0","1","2","3","4","5","6","7","8","9","!","#","$","%","&","'","(",")","*","+",",","-",".","/",":",";","<","=",">","?","@","[","]","^","_","`","{","|","}","~","\\\"","¥","\\\\"]
 
 charLength = 20
 
-setChars :: Int -> String -> String -> IO String
+setChars :: Int -> [String] -> [String] -> IO String
 setChars i strs res = do
     r <- newStdGen
     let (idx, stdGen) = randomR (0, length strs - 1) r :: (Int, StdGen)
     let str = strs !! idx
     let resChars = res ++ [str]
     if length resChars == i then
-      return resChars
+      return $ intercalate "" resChars
     else
       setChars i strs resChars
 
@@ -95,7 +96,7 @@ chat ref pairRef pendingConn = do
     conn <- WS.acceptRequest pendingConn
     identifier <- atomicModifyIORef ref (addClient conn)
 
-    randomChars <- setChars charLength charSet ""
+    randomChars <- setChars charLength charSet []
     putStrLn "------------------------RANDOM------------------------"
     putStrLn randomChars
     putStrLn "------------------------------------------------------"

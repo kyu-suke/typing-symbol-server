@@ -26,7 +26,8 @@ type Client = (ConnId, WS.Connection)
 -- type RoomPair = (Client, Maybe Client)
 type RoomPair = (Client, Maybe Client, Config)
 
-data Config = Config { targetChar :: String
+data Config = Config { step :: String
+                     , targetChar :: String
                      , playerOneLeftChar :: String
                      , playerTwoLeftChar :: String
                      }
@@ -106,10 +107,11 @@ chat ref pairRef pendingConn = do
     rp <- case filter (isNothing . snd') pairRooms of
                x : xs -> atomicModifyIORef pairRef (modRoomPair client (x:xs))
 
-               _ -> atomicModifyIORef pairRef (addRoomPair client (Config randomChars randomChars randomChars))
+               _ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" "Ready?" "Ready?" "Ready?"))
+               --_ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" randomChars randomChars randomChars))
 
     case rp of
-      (cl1, Just cl2, cfg) -> broadcast (pack $ "{\"message\": \"pairing\", \"targetChar\": \"" ++ targetChar cfg ++ "\"}") [cl1, cl2]
+      (cl1, Just cl2, cfg) -> broadcast (pack $ makeRes "pairing" cfg) [cl1, cl2]
       (cl1, Nothing, cfg) -> broadcast "{\"message\": \"wait\"}" [cl1]
 
     flip finally (bothDisconnect identifier) $ forever $ do
@@ -137,6 +139,15 @@ filterRoomPair cid rp =
     case rp of
         (cl1, Just cl2, cfg) -> fst cl1 == cid || fst cl2 == cid
         _ -> False
+
+makeRes :: String -> Config -> String
+makeRes msg cfg =
+  "{" ++
+  " \"message\": \"" ++ msg ++ "\"," ++
+  " \"targetChar\": \"" ++ targetChar cfg ++ "\"," ++
+  " \"playerOneLeftChar\": \"" ++ playerOneLeftChar cfg ++ "\"," ++
+  " \"playerTwoLeftChar\": \"" ++ playerTwoLeftChar cfg ++ "\"" ++
+  "}"
 
 app :: Application
 app req respond = respond $ responseFile status204 [] "" Nothing

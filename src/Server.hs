@@ -5,7 +5,7 @@ import Control.Monad (forever, forM_)
 import Control.Exception (finally)
 import Data.Maybe (isNothing, isJust)
 import Data.IORef
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import qualified Data.Map as M
 import Network.HTTP.Types (hContentType)
 import Network.HTTP.Types.Status (status204)
@@ -30,6 +30,8 @@ data Config = Config { step :: String
                      , targetChar :: String
                      , playerOneLeftChar :: String
                      , playerTwoLeftChar :: String
+                     , p1Id :: Int
+                     , p2Id :: Int
                      }
 
 charSet =
@@ -98,6 +100,10 @@ chat ref pairRef pendingConn = do
     identifier <- atomicModifyIORef ref (addClient conn)
 
     randomChars <- setChars charLength charSet []
+    rand <- newStdGen
+    let (p1, gen) = random rand :: (Int, StdGen)
+    let (p2,_) = random gen :: (Int, StdGen)
+    rand <- newStdGen
     putStrLn "------------------------RANDOM------------------------"
     putStrLn randomChars
     putStrLn "------------------------------------------------------"
@@ -107,12 +113,12 @@ chat ref pairRef pendingConn = do
     rp <- case filter (isNothing . snd') pairRooms of
                x : xs -> atomicModifyIORef pairRef (modRoomPair client (x:xs))
 
-               _ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" "Ready?" "Ready?" "Ready?"))
+               _ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" "Ready?" "Ready?" "Ready?" p1 p2))
                --_ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" randomChars randomChars randomChars))
 
     case rp of
-      (cl1, Just cl2, cfg) -> broadcast (pack $ makeRes "pairing" cfg) [cl1, cl2]
-      (cl1, Nothing, cfg) -> broadcast "{\"message\": \"wait\"}" [cl1]
+      (cl1, Just cl2, cfg) -> broadcast (makeRes "pairing" cfg) [cl1, cl2]
+      (cl1, Nothing, cfg) -> broadcast (makeRes "wait" cfg) [cl1]
 
     flip finally (bothDisconnect identifier) $ forever $ do
         msg <- WS.receiveData conn
@@ -121,7 +127,7 @@ chat ref pairRef pendingConn = do
         let roomPair = filter (filterRoomPair identifier) pairRooms
 
         case roomPair of
-          ((cl1, Just cl2, cfg):_) -> broadcast msg [cl1, cl2]
+          ((cl1, Just cl2, cfg):_) -> broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
           _ -> putStrLn "no connect"
     where
     -- def function in where
@@ -140,14 +146,23 @@ filterRoomPair cid rp =
         (cl1, Just cl2, cfg) -> fst cl1 == cid || fst cl2 == cid
         _ -> False
 
-makeRes :: String -> Config -> String
+makeRes :: String -> Config -> Text
 makeRes msg cfg =
-  "{" ++
+  pack $ "{" ++
   " \"message\": \"" ++ msg ++ "\"," ++
   " \"targetChar\": \"" ++ targetChar cfg ++ "\"," ++
   " \"playerOneLeftChar\": \"" ++ playerOneLeftChar cfg ++ "\"," ++
-  " \"playerTwoLeftChar\": \"" ++ playerTwoLeftChar cfg ++ "\"" ++
+  " \"playerTwoLeftChar\": \"" ++ playerTwoLeftChar cfg ++ "\"," ++
+  " \"p1Id\": \"" ++ show(p1Id cfg) ++ "\"," ++
+  " \"p2Id\": \"" ++ show(p2Id cfg) ++ "\"" ++
   "}"
+
+makeConfig :: Config -> Int -> String -> (Client, Client) -> Config
+makeConfig cfg i s (cl1, cl2) =
+    if i == fst cl1 then
+        cfg {playerOneLeftChar = s}
+    else
+        cfg {playerTwoLeftChar = s}
 
 app :: Application
 app req respond = respond $ responseFile status204 [] "" Nothing

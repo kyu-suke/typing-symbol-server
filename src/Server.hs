@@ -79,6 +79,19 @@ modRoomPair c (rx : rxs) rps =
     in
     ((fst' rx, Just c, trd' rx):roomPair, (fst' rx, Just c, trd' rx))
 
+modRoomPairConfig :: Int -> Text -> [RoomPair] -> ([RoomPair], RoomPair)
+modRoomPairConfig i msg rps =
+    let
+        (cl1, cl2, cfg) = head $ filter (filterRoomPair i) rps
+        newCfg = if fst cl1 == i then
+                     cfg {playerOneLeftChar = unpack msg}
+                 else
+                     cfg {playerTwoLeftChar = unpack msg}
+
+        roomPair = filter (not . filterRoomPair i) rps
+    in
+    ((cl1, cl2, newCfg):roomPair, (cl1, cl2, newCfg))
+
 removeRoomPair :: Int -> [RoomPair] -> ([RoomPair], [RoomPair])
 removeRoomPair i rps =
     let
@@ -123,12 +136,14 @@ chat ref pairRef pendingConn = do
     flip finally (bothDisconnect identifier) $ forever $ do
         msg <- WS.receiveData conn
         conns <- readIORef ref
-        pairRooms <- readIORef pairRef
-        let roomPair = filter (filterRoomPair identifier) pairRooms
+        (cl1, Just cl2, cfg) <- atomicModifyIORef pairRef (modRoomPairConfig identifier msg)
+        broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
 
-        case roomPair of
-          ((cl1, Just cl2, cfg):_) -> broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
-          _ -> putStrLn "no connect"
+        -- pairRooms <- readIORef pairRef
+        -- let roomPair = filter (filterRoomPair identifier) pairRooms
+        -- case roomPair of
+        --   ((cl1, Just cl2, cfg):_) -> broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
+        --   _ -> putStrLn "no connect"
     where
     -- def function in where
     disconnect identifier = atomicModifyIORef ref (removeClient identifier)

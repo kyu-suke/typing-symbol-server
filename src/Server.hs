@@ -26,18 +26,19 @@ type Client = (ConnId, WS.Connection)
 -- type RoomPair = (Client, Maybe Client)
 type RoomPair = (Client, Maybe Client, Config)
 
-data Config = Config { step :: String
+data Config = Config { message :: String
                      , targetChar :: String
                      , playerOneLeftChar :: String
                      , playerTwoLeftChar :: String
                      , p1Id :: Int
                      , p2Id :: Int
-                     }
+                     } deriving Show
 
 charSet =
     ["0","1","2","3","4","5","6","7","8","9","!","#","$","%","&","'","(",")","*","+",",","-",".","/",":",";","<","=",">","?","@","[","]","^","_","`","{","|","}","~","\\\"","¥","\\\\"]
 
-charLength = 20
+--charLength = 20
+charLength = 2
 
 setChars :: Int -> [String] -> [String] -> IO String
 setChars i strs res = do
@@ -76,17 +77,25 @@ modRoomPair :: Client -> [RoomPair] -> [RoomPair] -> ([RoomPair], RoomPair)
 modRoomPair c (rx : rxs) rps =
     let
         roomPair = filter (isJust . snd') rps ++ rxs
+        newCfg = (trd' rx) {message = "pairing"}
     in
-    ((fst' rx, Just c, trd' rx):roomPair, (fst' rx, Just c, trd' rx))
+    ((fst' rx, Just c, newCfg):roomPair, (fst' rx, Just c, newCfg))
 
-modRoomPairConfig :: Int -> Text -> [RoomPair] -> ([RoomPair], RoomPair)
-modRoomPairConfig i msg rps =
+modRoomPairConfig :: Int -> Text -> String -> [RoomPair] -> ([RoomPair], RoomPair)
+modRoomPairConfig i msg randomChars rps =
     let
         (cl1, cl2, cfg) = head $ filter (filterRoomPair i) rps
-        newCfg = if fst cl1 == i then
-                     cfg {playerOneLeftChar = unpack msg}
+        tmpCfg = if message cfg == "pairing" then cfg {message = "typed"} else cfg
+
+        replacedCfg = if fst cl1 == i then
+                     tmpCfg {playerOneLeftChar = unpack msg}
                  else
-                     cfg {playerTwoLeftChar = unpack msg}
+                     tmpCfg {playerTwoLeftChar = unpack msg}
+
+        newCfg
+         |  playerOneLeftChar replacedCfg == "" && playerTwoLeftChar replacedCfg == ""  && message replacedCfg == "typed"  = replacedCfg {targetChar = randomChars, playerOneLeftChar = randomChars, playerTwoLeftChar = randomChars , message = "battle"}
+         | (playerOneLeftChar replacedCfg == "" || playerTwoLeftChar replacedCfg == "") && message replacedCfg == "battle" = replacedCfg {message = "end"}
+         | otherwise                                                                                                       = replacedCfg
 
         roomPair = filter (not . filterRoomPair i) rps
     in
@@ -126,18 +135,20 @@ chat ref pairRef pendingConn = do
     rp <- case filter (isNothing . snd') pairRooms of
                x : xs -> atomicModifyIORef pairRef (modRoomPair client (x:xs))
 
-               _ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" "Ready?" "Ready?" "Ready?" p1 p2))
+               _ -> atomicModifyIORef pairRef (addRoomPair client (Config "wait" "Ready?" "Ready?" "Ready?" p1 p2))
                --_ -> atomicModifyIORef pairRef (addRoomPair client (Config "ready" randomChars randomChars randomChars))
 
     case rp of
-      (cl1, Just cl2, cfg) -> broadcast (makeRes "pairing" cfg) [cl1, cl2]
-      (cl1, Nothing, cfg) -> broadcast (makeRes "wait" cfg) [cl1]
+      (cl1, Just cl2, cfg) -> broadcast (makeRes cfg) [cl1, cl2]
+      (cl1, Nothing, cfg) -> broadcast (makeRes cfg) [cl1]
 
     flip finally (bothDisconnect identifier) $ forever $ do
         msg <- WS.receiveData conn
         conns <- readIORef ref
-        (cl1, Just cl2, cfg) <- atomicModifyIORef pairRef (modRoomPairConfig identifier msg)
-        broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
+        (cl1, Just cl2, cfg) <- atomicModifyIORef pairRef (modRoomPairConfig identifier msg randomChars)
+        --broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
+        putStrLn $ show $ makeRes cfg
+        broadcast (makeRes cfg) [cl1, cl2]
 
         -- pairRooms <- readIORef pairRef
         -- let roomPair = filter (filterRoomPair identifier) pairRooms
@@ -161,10 +172,10 @@ filterRoomPair cid rp =
         (cl1, Just cl2, cfg) -> fst cl1 == cid || fst cl2 == cid
         _ -> False
 
-makeRes :: String -> Config -> Text
-makeRes msg cfg =
+makeRes :: Config -> Text
+makeRes cfg =
   pack $ "{" ++
-  " \"message\": \"" ++ msg ++ "\"," ++
+  " \"message\": \"" ++ message cfg ++ "\"," ++
   " \"targetChar\": \"" ++ targetChar cfg ++ "\"," ++
   " \"playerOneLeftChar\": \"" ++ playerOneLeftChar cfg ++ "\"," ++
   " \"playerTwoLeftChar\": \"" ++ playerTwoLeftChar cfg ++ "\"," ++

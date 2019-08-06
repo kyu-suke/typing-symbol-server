@@ -13,6 +13,10 @@ import Network.Wai (Application, responseFile)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import System.Random
 import Data.List
+import Data.String
+import System.Environment
+import qualified Data.Streaming.Network as DS
+
 
 import qualified Network.Wai.Handler.Warp as Warp
 import qualified Network.WebSockets as WS
@@ -195,9 +199,18 @@ app req respond = respond $ responseFile status204 [] "" Nothing
 
 start :: IO ()
 start = do
-    let port = 3000
-    let setting = Warp.setPort port Warp.defaultSettings
-    putStrLn $ "Your server is listening at http://localhost:" ++ show port ++ "/"
+
+    maybeHost <- lookupEnv "SERVER_HOST"
+    let host = case maybeHost of
+      Just h -> h
+      _ -> "localhost"
+
+    serverPort <- case lookupEnv "SERVER_PORT" of
+      Just port -> port
+      _ -> "3000"
+
+    let setting = Warp.setHost (fromString host) $ Warp.setPort (read serverPort) Warp.defaultSettings
+    putStrLn $ "Your server is listening at " ++ host ++ ":" ++ serverPort ++ "/"
     ref <- newIORef []
     pairRef <- newIORef []
     Warp.runSettings setting $ websocketsOr WS.defaultConnectionOptions (chat ref pairRef) app

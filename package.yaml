@@ -26,6 +26,7 @@ dependencies:
 - random
 - http-types
 - network
+- streaming-commons
 - websockets
 - warp
 - wai

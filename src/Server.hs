@@ -202,15 +202,16 @@ start = do
 
     maybeHost <- lookupEnv "SERVER_HOST"
     let host = case maybeHost of
-      Just h -> h
-      _ -> "localhost"
+                 Just h -> h
+                 _  -> "localhost"
 
-    serverPort <- case lookupEnv "SERVER_PORT" of
-      Just port -> port
-      _ -> "3000"
+    maybePort <- lookupEnv "SERVER_PORT"
+    let port = case maybePort of
+                 Just p -> p
+                 _ -> "3000"
 
-    let setting = Warp.setHost (fromString host) $ Warp.setPort (read serverPort) Warp.defaultSettings
-    putStrLn $ "Your server is listening at " ++ host ++ ":" ++ serverPort ++ "/"
+    let setting = Warp.setHost (fromString host) $ Warp.setPort (read port) Warp.defaultSettings
+    putStrLn $ "Your server is listening at " ++ host ++ ":" ++ port ++ "/"
     ref <- newIORef []
     pairRef <- newIORef []
     Warp.runSettings setting $ websocketsOr WS.defaultConnectionOptions (chat ref pairRef) app

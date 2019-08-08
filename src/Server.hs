@@ -195,7 +195,9 @@ makeConfig cfg i s (cl1, cl2) =
         cfg {playerTwoLeftChar = s}
 
 app :: Application
-app req respond = respond $ responseFile status204 [] "" Nothing
+-- app req respond = respond $ responseFile status204 [] "" Nothing
+app req respond = respond $ responseFile status200 [(hContentType, "text/html")] "index.html" Nothing
+
 
 start :: IO ()
 start = do
@@ -210,7 +212,8 @@ start = do
                  Just p -> p
                  _ -> "3000"
 
-    let setting = Warp.setHost (fromString host) $ Warp.setPort (read port) Warp.defaultSettings
+    --let setting = Warp.setHost (fromString host) $ Warp.setPort (read port) Warp.defaultSettings
+    let setting = Warp.setPort (read port) Warp.defaultSettings
     putStrLn $ "Your server is listening at " ++ host ++ ":" ++ port ++ "/"
     ref <- newIORef []
     pairRef <- newIORef []

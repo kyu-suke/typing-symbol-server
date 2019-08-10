@@ -8,7 +8,7 @@ import Data.IORef
 import Data.Text (Text, pack, unpack)
 import qualified Data.Map as M
 import Network.HTTP.Types (hContentType)
-import Network.HTTP.Types.Status (status204)
+import Network.HTTP.Types.Status (status204, status200)
 import Network.Wai (Application, responseFile)
 import Network.Wai.Handler.WebSockets (websocketsOr)
 import System.Random

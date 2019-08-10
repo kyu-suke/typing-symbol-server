@@ -1,5 +1,6 @@
 # Use the existing Haskell image as our base
-FROM haskell:8.2.2 as builder
+#FROM haskell:8.2.2 as builder
+FROM typingserver as builder
 
  # Checkout our code onto the Docker container
 WORKDIR /app
@@ -11,7 +12,10 @@ RUN stack setup
 RUN stack build --copy-bins
 
  # Copy the "helloworld-haskell-exe" executable to the image using docker multi stage build
-FROM fpco/haskell-scratch:integer-gmp
+#FROM fpco/haskell-scratch:integer-gmp
+#FROM alpine:latest
+FROM haskell:8.2.2
+
 WORKDIR /root/
 COPY --from=builder /root/.local/bin/typing-symbol-server-exe .
 
@@ -20,4 +24,5 @@ EXPOSE 3000
 
  # Run the server command
 CMD ["./typing-symbol-server-exe"]
+#CMD ["/root/.local/bin/typing-symbol-server-exe"]
 

@@ -6,6 +6,7 @@ WORKDIR /app
 ADD . /app
 
  # Build and test our code, then install the “helloworld-haskell-exe” executable
+RUN stack upgrade
 RUN stack setup
 RUN stack build --copy-bins
 

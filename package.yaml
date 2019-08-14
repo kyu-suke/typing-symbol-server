@@ -29,6 +29,7 @@ dependencies:
 - streaming-commons
 - websockets
 - warp
+- warp-tls
 - wai
 - wai-websockets
 

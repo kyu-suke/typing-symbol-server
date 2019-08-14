@@ -19,6 +19,7 @@ import qualified Data.Streaming.Network as DS
 
 
 import qualified Network.Wai.Handler.Warp as Warp
+import qualified Network.Wai.Handler.WarpTLS as WarpTLS
 import qualified Network.WebSockets as WS
 
 -- Network-WebSockets
@@ -151,7 +152,7 @@ chat ref pairRef pendingConn = do
         conns <- readIORef ref
         (cl1, Just cl2, cfg) <- atomicModifyIORef pairRef (modRoomPairConfig identifier msg randomChars)
         --broadcast (makeRes "typed" (makeConfig cfg identifier (unpack msg) (cl1, cl2))) [cl1, cl2]
-        putStrLn $ show $ makeRes cfg
+        print $ makeRes cfg
         broadcast (makeRes cfg) [cl1, cl2]
 
         -- pairRooms <- readIORef pairRef
@@ -217,7 +218,9 @@ start = do
     putStrLn $ "Your server is listening at " ++ host ++ ":" ++ port ++ "/"
     ref <- newIORef []
     pairRef <- newIORef []
-    Warp.runSettings setting $ websocketsOr WS.defaultConnectionOptions (chat ref pairRef) app
+    let tls = WarpTLS.tlsSettings "ca.crt" "hogeca.key"
+    --Warp.runSettings setting $ websocketsOr WS.defaultConnectionOptions (chat ref pairRef) app
+    WarpTLS.runTLS tls setting $ websocketsOr WS.defaultConnectionOptions (chat ref pairRef) app
 
 
 

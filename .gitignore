@@ -1,3 +1,6 @@
 .stack-work/
 typing-symbol-server.cabal
 *~
+ca.crt
+ca.csr
+hogeca.key

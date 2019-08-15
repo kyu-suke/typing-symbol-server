@@ -42,8 +42,8 @@ data Config = Config { message :: String
 charSet =
     ["0","1","2","3","4","5","6","7","8","9","!","#","$","%","&","'","(",")","*","+",",","-",".","/",":",";","<","=",">","?","@","[","]","^","_","`","{","|","}","~","\\\"","¥","\\\\"]
 
---charLength = 20
-charLength = 2
+charLength = 20
+--charLength = 2
 
 setChars :: Int -> [String] -> [String] -> IO String
 setChars i strs res = do

@@ -1,6 +1,7 @@
 # Use the existing Haskell image as our base
 #FROM haskell:8.2.2 as builder
-FROM typingserver as builder
+#FROM typingserver as builder
+FROM sample-build-server as builder
 
  # Checkout our code onto the Docker container
 WORKDIR /app
@@ -18,6 +19,9 @@ FROM haskell:8.2.2
 
 WORKDIR /root/
 COPY --from=builder /root/.local/bin/typing-symbol-server-exe .
+
+ADD ca.crt /root
+ADD hogeca.key /root
 
  # Expose a port to run our application
 EXPOSE 3000

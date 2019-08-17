@@ -1,7 +1,7 @@
 # Use the existing Haskell image as our base
 #FROM haskell:8.2.2 as builder
 #FROM typingserver as builder
-FROM sample-build-server as builder
+FROM builded-typingserver as builder
 
  # Checkout our code onto the Docker container
 WORKDIR /app
